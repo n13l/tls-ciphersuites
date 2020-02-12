@@ -68,7 +68,6 @@ main(int argc, char *argv[])
     int alg_bits = 0;
     int bits = SSL_CIPHER_get_bits(c, &alg_bits);
 
-
     const char *kex = OBJ_nid2ln(nid_kex); 
     const char *auth = OBJ_nid2ln(nid_auth); 
     const char *digest = OBJ_nid2ln(nid_digest);
@@ -79,6 +78,7 @@ main(int argc, char *argv[])
     printf("0x%.4x,%s,%s,%s,%s,%s,%s,%d,%d\n", 
            id, p, v, kex, auth, digest,cipher, alg_bits, aead);
   }
+
   printf("\n");
 err: 
   return 0;
