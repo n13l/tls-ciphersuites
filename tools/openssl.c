@@ -86,7 +86,7 @@ main(int argc, char *argv[])
     printf("0x%.8x,%s,,,,,,,,%s\n", i, export1024[i].alias, export1024[i].name);
 
   for (int i = 0; i < array_size(gost89); i++)
-    printf("0x%.8x,%s,,,,,,,,%s\n", i, export1024[i].alias, gost89[i].name);
+    printf("0x%.8x,%s,,,,,,,,%s\n", i, gost89[i].alias, gost89[i].name);
 
   for (int i = 0; i < array_size(export1024); i++)
     printf("0x%.8x,%s,,,,,,,,%s\n", i, sslv2[i].alias, sslv2[i].name);
