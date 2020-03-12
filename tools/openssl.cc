@@ -102,11 +102,6 @@ ssl_version1(char *str, int size)
 }
 
 void
-merge(unsigned long id, const char *alias, const char *name)
-{
-}
-
-void
 parse(char *line, int maxsize)
 {
 	const char *name = "", *alias = "";
