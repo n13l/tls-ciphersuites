@@ -77,6 +77,13 @@ static struct iana_mapping sslv23[] = {
   {0xff0800,"DES-CFB-M1",              "SSL_DES_64_CFB64_WITH_MD5_1"},
 };
 
+
+/* elastic cipher suites */
+static struct iana_mapping elastic[] = {
+  {0xfefe, "SSL_RSA_FIPS_WITH_DES_CBC_SHA", ""},
+  {0xfeff, "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA", ""},
+};
+
 void
 ssl_init1()
 {
@@ -155,10 +162,10 @@ main(int argc, char *argv[])
 
 	for (int i = 0; i < array_size(export1024); i++)
 		insert(export1024[i]);
-
+	for (int i = 0; i < array_size(elastic); i++)
+		insert(elastic[i]);
 	for (int i = 0; i < array_size(gost89); i++)
 		insert(gost89[i]);
-
 	for (int i = 0; i < array_size(sslv23); i++)
 		insert(sslv23[i]);
 
