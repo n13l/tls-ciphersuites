@@ -209,7 +209,7 @@ main(int argc, char *argv[])
 
 	for (auto it: mapping) {
 		struct iana_mapping& cs = it.second;		
-		printf("0x%.8x,%s,%s\n", cs.id, cs.alias, cs.name);
+		printf("0x%.x,%s,%s\n", cs.id, cs.alias, cs.name);
 	}
 
 err: 
