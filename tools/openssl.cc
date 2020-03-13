@@ -22,19 +22,12 @@ struct iana_mapping {
 	const char *name;
 } def{ .id = 0xffffffff };
 
-std::unordered_map<uint32_t, struct iana_mapping&> mapping{};
-
-bool
-exists(uint32_t id)
-{
-	return !(mapping.find(id) == mapping.end());
-}
+std::unordered_multimap<uint32_t, struct iana_mapping&> mapping{};
 
 void
 insert(struct iana_mapping& iana)
 {
-	if (!exists(iana.id))
-		mapping.insert({iana.id, iana});
+	mapping.insert({iana.id, iana});
 }
 
 static struct iana_mapping export1024[] = {
@@ -51,6 +44,11 @@ static struct iana_mapping gost89[] = {
   {0x81,"GOST2001-GOST89-GOST89",      "TLS_GOSTR341001_WITH_28147_CNT_IMIT"},
   {0x82,"GOST94-NULL-GOST94",          "TLS_GOSTR341001_WITH_NULL_GOSTR3411"},
   {0x83,"GOST2001-GOST89-GOST89",      "TLS_GOSTR341094_WITH_NULL_GOSTR3411"},
+};
+
+/*tlsv12 cipher suites */
+static struct iana_mapping tlsv12[] = {
+  {0x0016,"DHE-RSA-DES-CBC3-SHA",      "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"},
 };
 
 /* sslv23 cipher suites */
@@ -168,6 +166,8 @@ main(int argc, char *argv[])
 		insert(gost89[i]);
 	for (int i = 0; i < array_size(sslv23); i++)
 		insert(sslv23[i]);
+	for (int i = 0; i < array_size(tlsv12); i++)
+		insert(tlsv12[i]);
 
 	ctx = SSL_CTX_new(meth);
 	if (SSL_CTX_set_min_proto_version(ctx, min_version) == 0)
