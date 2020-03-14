@@ -1,5 +1,4 @@
 #include <unordered_map>
-
 #include <string.h>
 
 #include <openssl/ssl.h>
@@ -13,10 +12,6 @@
 #endif
 
 struct iana_mapping {
-	bool operator()(struct iana_mapping* x, struct iana_mapping* y)
-	{
-		return x->id == y->id;
-	}
 	uint32_t id;
 	const char *alias;
 	const char *name;
@@ -27,8 +22,19 @@ std::unordered_multimap<uint32_t, struct iana_mapping&> mapping{};
 void
 insert(struct iana_mapping& iana)
 {
+	auto itr = mapping.equal_range(iana.id); 
+	for (auto it = itr.first; it != itr.second; it++) { 
+		auto cs = it->second;
+		//printf("%d %d %s %s\n", cs.id, &iana.id, cs.alias, iana.alias);
+		if (cs.id == iana.id && !strcmp(cs.alias, iana.alias))
+			return;
+	} 
 	mapping.insert({iana.id, iana});
 }
+
+static struct iana_mapping qsh[] = {
+  {0xd001, "QSH", "TLS_QSH"},
+};
 
 static struct iana_mapping export1024[] = {
   {0x60,"EXP1024-RC4-MD5",             "TLS_RSA_EXPORT1024_WITH_RC4_56_MD5"},
@@ -48,7 +54,7 @@ static struct iana_mapping gost89[] = {
 
 /*tlsv12 cipher suites */
 static struct iana_mapping tlsv12[] = {
-  {0x0016,"DHE-RSA-DES-CBC3-SHA",      "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"},
+  {0x0016,"EDH-RSA-DES-CBC3-SHA",      "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"},
 };
 
 /* sslv23 cipher suites */
@@ -158,6 +164,8 @@ main(int argc, char *argv[])
 
 	ssl_init1();
 
+	for (int i = 0; i < array_size(qsh); i++)
+		insert(qsh[i]);
 	for (int i = 0; i < array_size(export1024); i++)
 		insert(export1024[i]);
 	for (int i = 0; i < array_size(elastic); i++)

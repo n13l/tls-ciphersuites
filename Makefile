@@ -8,7 +8,7 @@ INCLUDES=-I$(s)/opt/include -I$(s)
 VENDOR_PATH := $(if $(VENDOR_PATH),$(VENDOR_PATH),$(s)/opt)
 
 LDFLAGS=-L$(VENDOR_PATH)/lib -lpthread -ldl -lstdc++
-CFLAGS=$(INCLUDES) -g -fPIC -DCONFIG_LINUX
+CXXFLAGS=$(INCLUDES) -g -fPIC -DCONFIG_LINUX
 LIBS=$(VENDOR_PATH)/lib/libssl.a $(VENDOR_PATH)/lib/libcrypto.a
 
 srcs := tools/openssl.cc
