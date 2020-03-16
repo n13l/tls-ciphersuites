@@ -32,8 +32,9 @@ insert(struct iana_mapping& iana)
 	mapping.insert({iana.id, iana});
 }
 
+/* prefix with 03 - collision with TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256 */
 static struct iana_mapping qsh[] = {
-  {0xd001, "QSH", "TLS_QSH"},
+  {0x03d001, "QSH", "TLS_QSH"},
 };
 
 static struct iana_mapping export1024[] = {
@@ -49,7 +50,7 @@ static struct iana_mapping gost89[] = {
   {0x80,"GOST94-GOST89-GOST89",        "TLS_GOSTR341094_WITH_28147_CNT_IMIT"},
   {0x81,"GOST2001-GOST89-GOST89",      "TLS_GOSTR341001_WITH_28147_CNT_IMIT"},
   {0x82,"GOST94-NULL-GOST94",          "TLS_GOSTR341001_WITH_NULL_GOSTR3411"},
-  {0x83,"GOST2001-GOST89-GOST89",      "TLS_GOSTR341094_WITH_NULL_GOSTR3411"},
+  {0x83,"GOST2001-NULL-GOST89",        "TLS_GOSTR341094_WITH_NULL_GOSTR3411"},
 };
 
 /*tlsv12 cipher suites */
