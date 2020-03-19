@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <openssl/ssl.h>
+#include <openssl/ssl3.h>
 #include <openssl/err.h>
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
@@ -15,6 +16,7 @@ struct iana_mapping {
 	uint32_t id;
 	const char *alias;
 	const char *name;
+	const char *version;
 } def{ .id = 0xffffffff };
 
 std::unordered_multimap<uint32_t, struct iana_mapping&> mapping{};
@@ -25,7 +27,6 @@ insert(struct iana_mapping& iana)
 	auto itr = mapping.equal_range(iana.id); 
 	for (auto it = itr.first; it != itr.second; it++) { 
 		auto cs = it->second;
-		//printf("%d %d %s %s\n", cs.id, &iana.id, cs.alias, iana.alias);
 		if (cs.id == iana.id && !strcmp(cs.alias, iana.alias))
 			return;
 	} 
@@ -34,16 +35,16 @@ insert(struct iana_mapping& iana)
 
 /* prefix with 03 - collision with TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256 */
 static struct iana_mapping qsh[] = {
-  {0x03d001, "QSH", "TLS_QSH"},
+  {0x13d001, "QSH", "TLS_QSH", "TLSv1.3"},
 };
 
 static struct iana_mapping export1024[] = {
-  {0x60,"EXP1024-RC4-MD5",             "TLS_RSA_EXPORT1024_WITH_RC4_56_MD5"},
-  {0x61,"EXP1024-RC2-CBC-MD5",         "TLS_RSA_EXPORT1024_WITH_RC2_CBC_56_MD5"},
-  {0x62,"EXP1024-DES-CBC-SHA",         "TLS_RSA_EXPORT1024_WITH_DES_CBC_SHA"},
-  {0x63,"EXP1024-DHE-DSS-DES-CBC-SHA", "TLS_DHE_DSS_EXPORT1024_WITH_DES_CBC_SHA"},
-  {0x64,"EXP1024-RC4-SHA",             "TLS_RSA_EXPORT1024_WITH_RC4_56_SHA"},
-  {0x65,"EXP1024-DHE-DSS-RC4-SHA",     "TLS_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA"},
+  {0x60,"EXP1024-RC4-MD5",             "TLS_RSA_EXPORT1024_WITH_RC4_56_MD5", "SSLv3"},
+  {0x61,"EXP1024-RC2-CBC-MD5",         "TLS_RSA_EXPORT1024_WITH_RC2_CBC_56_MD5", "SSLv3"},
+  {0x62,"EXP1024-DES-CBC-SHA",         "TLS_RSA_EXPORT1024_WITH_DES_CBC_SHA", "SSLv3"},
+  {0x63,"EXP1024-DHE-DSS-DES-CBC-SHA", "TLS_DHE_DSS_EXPORT1024_WITH_DES_CBC_SHA", "SSLv3"},
+  {0x64,"EXP1024-RC4-SHA",             "TLS_RSA_EXPORT1024_WITH_RC4_56_SHA", "SSLv3"},
+  {0x65,"EXP1024-DHE-DSS-RC4-SHA",     "TLS_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA", "SSLv3"},
 };
 
 static struct iana_mapping gost89[] = {
@@ -53,6 +54,25 @@ static struct iana_mapping gost89[] = {
   {0x83,"GOST2001-NULL-GOST89",        "TLS_GOSTR341094_WITH_NULL_GOSTR3411"},
 };
 
+/* 
+ * This section defines the following four TLS13_GOST cipher suites that can
+ * be used to support Russian cryptographic algorithms:
+
+ * CipherSuite TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L = {TBD1};
+ * CipherSuite TLS_GOSTR341112_256_WITH_MAGMA_MGM_L = {TBD2};
+ * CipherSuite TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S = {TBD3};
+ * CipherSuite TLS_GOSTR341112_256_WITH_MAGMA_MGM_S = {TBD4};
+ *
+ * https://tools.ietf.org/id/draft-smyshlyaev-tls13-gost-suites-01.html#RFC8446
+ */
+
+static struct iana_mapping gost341112_256[] = {
+  {0x130080,"", "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L", "TLSv1.3"},
+  {0x130081,"", "TLS_GOSTR341112_256_WITH_MAGMA_MGM_L", "TLSv1.3"},
+  {0x130082,"", "TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S", "TLSv1.3"},
+  {0x130083,"", "TLS_GOSTR341112_256_WITH_MAGMA_MGM_S", "TLSv1.3"},
+};
+
 /*tlsv12 cipher suites */
 static struct iana_mapping tlsv12[] = {
   {0x0016,"EDH-RSA-DES-CBC3-SHA",      "TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA"},
@@ -60,26 +80,26 @@ static struct iana_mapping tlsv12[] = {
 
 /* sslv23 cipher suites */
 static struct iana_mapping sslv23[] = {
-  {0x0001,"NULL-MD5",                  "TLS_RSA_WITH_NULL_MD5"},
-  {0x0002,"NULL-SHA",                  "TLS_RSA_WITH_NULL_SHA"},
-  {0x0003,"EXP-RC4-MD5",               "TLS_RSA_EXPORT_WITH_RC4_40_MD5"},
-  {0x0004,"RC4-MD5",                   "TLS_RSA_WITH_RC4_128_MD5"},
-  {0x0005,"RC4-SHA",                   "TLS_RSA_WITH_RC4_128_SHA"},
-  {0x0006,"EXP-RC2-CBC-MD5",           "TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5"},
-  {0x0007,"IDEA-CBC-SHA",              "TLS_RSA_WITH_IDEA_CBC_SHA"},
-  {0x0008,"EXP-DES-CBC-SHA",           "TLS_RSA_EXPORT_WITH_DES40_CBC_SHA"},
-  {0x0009,"DES-CBC-SHA",               "TLS_RSA_WITH_DES_CBC_SHA"},
-  {0x000a,"DES-CBC3-SHA",              "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
-  {0x000b,"EXP-DH-DSS-DES-CBC-SHA",    "TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA"},
-  {0x000c,"DH-DSS-DES-CBC-SHA",        "TLS_DH_DSS_WITH_DES_CBC_SHA"},
-  {0x000d,"DH-DSS-DES-CBC3-SHA",       "TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA"},
-  {0x000e,"EXP-DH-RSA-DES-CBC-SHA",    "TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA"},
-  {0x030080,"RC2-CBC-MD5",             "TLS_RSA_WITH_RC2_CBC_40_MD5"},
-  {0x050080,"IDEA-CBC-MD5",            "SSL_IDEA_128_CBC_WITH_MD5"},
-  {0x060040,"DES-CBC-MD5",             "SSL_DES_64_CBC_WITH_MD5"},
-  {0x0700c0,"DES-CBC3-MD5",            "SSL_DES_192_EDE3_CBC_WITH_MD5"},
-  {0x080080,"RC4-64-MD5",              "SSL_RC4_128_WITH_MD5"},
-  {0xff0800,"DES-CFB-M1",              "SSL_DES_64_CFB64_WITH_MD5_1"},
+  {0x0001,"NULL-MD5",                  "TLS_RSA_WITH_NULL_MD5", "SSLv2"},
+  {0x0002,"NULL-SHA",                  "TLS_RSA_WITH_NULL_SHA", "SSLv2"},
+  {0x0003,"EXP-RC4-MD5",               "TLS_RSA_EXPORT_WITH_RC4_40_MD5", "SSLv2"},
+  {0x0004,"RC4-MD5",                   "TLS_RSA_WITH_RC4_128_MD5", "SSLv2"},
+  {0x0005,"RC4-SHA",                   "TLS_RSA_WITH_RC4_128_SHA", "SSLv2"},
+  {0x0006,"EXP-RC2-CBC-MD5",           "TLS_RSA_EXPORT_WITH_RC2_CBC_40_MD5", "SSLv2"},
+  {0x0007,"IDEA-CBC-SHA",              "TLS_RSA_WITH_IDEA_CBC_SHA", "SSLv2"},
+  {0x0008,"EXP-DES-CBC-SHA",           "TLS_RSA_EXPORT_WITH_DES40_CBC_SHA", "SSLv2"},
+  {0x0009,"DES-CBC-SHA",               "TLS_RSA_WITH_DES_CBC_SHA","SSLv2"},
+  {0x000a,"DES-CBC3-SHA",              "TLS_RSA_WITH_3DES_EDE_CBC_SHA","SSLv2"},
+  {0x000b,"EXP-DH-DSS-DES-CBC-SHA",    "TLS_DH_DSS_EXPORT_WITH_DES40_CBC_SHA","SSLv2"},
+  {0x000c,"DH-DSS-DES-CBC-SHA",        "TLS_DH_DSS_WITH_DES_CBC_SHA","SSLv2"},
+  {0x000d,"DH-DSS-DES-CBC3-SHA",       "TLS_DH_DSS_WITH_3DES_EDE_CBC_SHA","SSLv2"},
+  {0x000e,"EXP-DH-RSA-DES-CBC-SHA",    "TLS_DH_RSA_EXPORT_WITH_DES40_CBC_SHA", "SSLv2"},
+  {0x030080,"RC2-CBC-MD5",             "TLS_RSA_WITH_RC2_CBC_40_MD5", "SSLv2"},
+  {0x050080,"IDEA-CBC-MD5",            "SSL_IDEA_128_CBC_WITH_MD5", "SSLv2"},
+  {0x060040,"DES-CBC-MD5",             "SSL_DES_64_CBC_WITH_MD5","SSLv2"},
+  {0x0700c0,"DES-CBC3-MD5",            "SSL_DES_192_EDE3_CBC_WITH_MD5", "SSLv2"},
+  {0x080080,"RC4-64-MD5",              "SSL_RC4_128_WITH_MD5", "SSLv2"},
+  {0xff0800,"DES-CFB-M1",              "SSL_DES_64_CFB64_WITH_MD5_1","SSLv2"},
 };
 
 
@@ -116,13 +136,14 @@ ssl_version1(char *str, int size)
 void
 parse(char *line, int maxsize)
 {
-	const char *name = "", *alias = "";
+	const char *name = "", *alias = "", *version = "";
 	unsigned long id = 0xffffffff, index = 0;
 	for (char *v = strtok(line, ","); v; v = strtok(NULL, ",")) {
 		switch (index++) {
 		case 0: id = strtol(v, NULL, 16); break;
 		case 1: alias = v; break;
 		case 2: name = v; break;
+		case 3: version = v; break;
 		}
 	}
 
@@ -133,6 +154,7 @@ parse(char *line, int maxsize)
 	cs->id = id;
 	cs->name = strdup(name);
 	cs->alias = strdup(alias);
+	cs->version = strdup(version);
 	insert(*cs);
 }
 
@@ -149,6 +171,19 @@ load_mapping(const char *file)
 	}
 
 	fclose(fp);   
+}
+
+SSL_CIPHER *
+lookup(STACK_OF(SSL_CIPHER) *sk, const char *name)
+{
+	for (int i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
+		const SSL_CIPHER *c = sk_SSL_CIPHER_value(sk, i);
+		const char *p = SSL_CIPHER_get_name(c);
+		if (strcmp(p, name))
+			continue;
+	}
+
+	return nullptr;
 }
 
 int
@@ -178,6 +213,9 @@ main(int argc, char *argv[])
 	for (int i = 0; i < array_size(tlsv12); i++)
 		insert(tlsv12[i]);
 
+	for (int i = 0; i < array_size(gost341112_256); i++)
+		insert(gost341112_256[i]);
+
 	ctx = SSL_CTX_new(meth);
 	if (SSL_CTX_set_min_proto_version(ctx, min_version) == 0)
 		goto err;
@@ -193,6 +231,7 @@ main(int argc, char *argv[])
 	for (int i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
 		const SSL_CIPHER *c = sk_SSL_CIPHER_value(sk, i);
 		const char *p = SSL_CIPHER_get_name(c);
+		const char *std = SSL_CIPHER_standard_name(c);
 
 		uint16_t id = SSL_CIPHER_get_id(c);
 		const char *v = SSL_CIPHER_get_version(c);
@@ -211,16 +250,17 @@ main(int argc, char *argv[])
 
 		int aead = SSL_CIPHER_is_aead(c);
 
-		struct iana_mapping* cs = new iana_mapping();
+		struct iana_mapping *cs = new iana_mapping();
 		cs->id = id;
-		cs->name = "";
+		cs->name = std;
 		cs->alias = p;
+		cs->version = v == NULL ? "": v;
 		insert(*cs);
 	}
 
 	for (auto it: mapping) {
 		struct iana_mapping& cs = it.second;		
-		printf("0x%.x,%s,%s\n", cs.id, cs.alias, cs.name);
+		printf("0x%.8x,%s,%s,%s\n", (int)cs.id, cs.alias, cs.name, cs.version);
 	}
 
 err: 
